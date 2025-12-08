@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark theme colors - More vibrant and modern */
+  --color-background: 220 13% 9%;
+  --color-foreground: 220 9% 98%;
+  --color-card: 220 13% 11%;
+  --color-card-foreground: 220 9% 98%;
+  --color-popover: 220 13% 11%;
+  --color-popover-foreground: 220 9% 98%;
+
+  /* Primary - Vibrant purple/blue */
+  --color-primary: 262 83% 58%;
+  --color-primary-foreground: 220 9% 98%;
+
+  /* Secondary - Cyan accent */
+  --color-secondary: 189 94% 43%;
+  --color-secondary-foreground: 220 13% 9%;
+
+  /* Muted backgrounds */
+  --color-muted: 220 13% 15%;
+  --color-muted-foreground: 220 9% 65%;
+
+  /* Accent for hover states */
+  --color-accent: 220 13% 18%;
+  --color-accent-foreground: 220 9% 98%;
+
+  /* Destructive - Modern red */
+  --color-destructive: 0 84% 60%;
+  --color-destructive-foreground: 220 9% 98%;
+
+  /* Success - Modern green */
+  --color-success: 142 76% 36%;
+  --color-success-foreground: 220 9% 98%;
+
+  /* Borders and inputs */
+  --color-border: 220 13% 20%;
+  --color-input: 220 13% 20%;
+  --color-ring: 262 83% 58%;
+
+  /* Radius */
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--color-border));
+  }
+
+  body {
+    background: linear-gradient(135deg, hsl(220 13% 9%) 0%, hsl(220 13% 7%) 100%);
+    background-attachment: fixed;
+    color: hsl(var(--color-foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--color-muted));
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--color-primary) / 0.5);
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--color-primary) / 0.7);
+  }
+}
+
+/* Monaco Editor - Minimal overrides to not break selection */
+/* Let Monaco's theme handle colors - only override what's necessary */
+
+/* Current line styling */
+.monaco-editor .current-line {
+  background-color: #2a2d2e !important;
+  border: none !important;
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px hsl(var(--color-primary) / 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px hsl(var(--color-primary) / 0.6);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(to right,
+      transparent 0%,
+      hsl(var(--color-primary) / 0.1) 50%,
+      transparent 100%);
+  background-size: 1000px 100%;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Glass effect */
+.glass {
+  background: hsl(var(--color-card) / 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--color-border) / 0.5);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--color-primary)), hsl(var(--color-secondary)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effect */
+.glow {
+  box-shadow: 0 0 20px hsl(var(--color-primary) / 0.3),
+    0 0 40px hsl(var(--color-primary) / 0.2);
+}
+
+/* Custom scrollbar class */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--color-muted));
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--color-primary) / 0.5);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--color-primary) / 0.7);
+}

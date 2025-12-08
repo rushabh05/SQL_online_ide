@@ -1,0 +1,11 @@
+id,name,department_id,salary,hire_date
+1,Alice Johnson,1,75000,2020-01-15
+2,Bob Smith,2,82000,2019-06-20
+3,Charlie Brown,1,68000,2021-03-10
+4,Diana Prince,3,95000,2018-11-05
+5,Eve Davis,2,71000,2022-02-14
+6,Frank Miller,1,79000,2020-08-22
+7,Grace Lee,3,88000,2019-12-01
+8,Henry Wilson,2,73000,2021-07-18
+9,Isabel Garcia,1,76000,2020-05-30
+10,Jack Thompson,3,91000,2018-09-12
