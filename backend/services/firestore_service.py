@@ -688,4 +688,3 @@ class FirestoreService:
 
 # Global singleton instance
 firestore_service = FirestoreService()
-
