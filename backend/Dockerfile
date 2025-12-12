@@ -18,14 +18,14 @@ RUN mkdir -p temp_sessions
 # Expose port (Railway/Render will override with $PORT)
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+# Health check - use environment variable for port
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
 # Set default port
 ENV PORT=8000
 
 # Run the application
-# Use shell form to expand PORT env variable (Railway/Render will override PORT)
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
+# Use exec form with shell to properly expand PORT environment variable
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
 

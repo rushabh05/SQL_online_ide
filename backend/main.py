@@ -4,16 +4,36 @@ FastAPI main application for Online SQL Playground
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import uvicorn
 import os
+import sys
 
+# Print startup info immediately for debugging
+print("=" * 50, file=sys.stderr)
+print("STARTING SQL PLAYGROUND BACKEND", file=sys.stderr)
+print(f"PORT env: {os.environ.get('PORT', 'not set')}", file=sys.stderr)
+print(f"Python version: {sys.version}", file=sys.stderr)
+print("=" * 50, file=sys.stderr)
+
+# Import routes (this will trigger Firestore init, but it's safe)
 from routes import upload, query, session
+
+print("Routes imported successfully", file=sys.stderr)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown"""
+    print("FastAPI app starting up...", file=sys.stderr)
+    yield
+    print("FastAPI app shutting down...", file=sys.stderr)
 
 # Create FastAPI app
 app = FastAPI(
     title="Online SQL Playground API",
     description="Upload CSV files and run SQL queries safely",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -61,7 +81,8 @@ async def root():
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    print("Health check called!", file=sys.stderr)
+    return {"status": "healthy", "port": os.environ.get("PORT", "8000")}
 
 # Global error handler
 @app.exception_handler(Exception)
