@@ -23,13 +23,28 @@ Cost Optimization:
 import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud.firestore_v1 import FieldFilter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from decimal import Decimal
 from typing import Dict, List, Optional, Any, Tuple
 import json
 import gzip
 import base64
 import os
 import threading
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime, date, and Decimal objects"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, bytes):
+            return obj.decode('utf-8', errors='replace')
+        return super().default(obj)
 
 # Maximum size for storing table data in Firestore (500KB compressed)
 MAX_TABLE_DATA_SIZE = 500 * 1024  # 500KB
@@ -288,8 +303,8 @@ class FirestoreService:
                 'rows': data
             }
             
-            # Compress data
-            json_str = json.dumps(table_data)
+            # Compress data (use custom encoder for datetime/date/Decimal)
+            json_str = json.dumps(table_data, cls=DateTimeEncoder)
             compressed = gzip.compress(json_str.encode('utf-8'))
             
             # Check size limit

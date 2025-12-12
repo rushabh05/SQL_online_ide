@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
+import os
 
 from routes import upload, query, session
 
@@ -15,18 +16,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS - Allow all localhost ports for development
+# Configure CORS
+# For production, set ALLOWED_ORIGINS environment variable
+# Example: ALLOWED_ORIGINS=https://your-app.vercel.app,https://yourdomain.com
+allowed_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
+production_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
+# Default development origins
+dev_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:5173",
+]
+
+# Combine production and dev origins
+all_origins = production_origins + dev_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

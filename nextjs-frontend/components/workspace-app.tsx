@@ -267,6 +267,29 @@ export function WorkspaceApp() {
         }
     }, [sessionId])
 
+    // Helper to check if SQL modifies schema or data
+    const isSchemaModifyingQuery = (sql: string): boolean => {
+        const upperSql = sql.trim().toUpperCase()
+        return upperSql.startsWith('CREATE') ||
+               upperSql.startsWith('DROP') ||
+               upperSql.startsWith('ALTER') ||
+               upperSql.startsWith('INSERT') ||
+               upperSql.startsWith('UPDATE') ||
+               upperSql.startsWith('DELETE') ||
+               upperSql.startsWith('TRUNCATE')
+    }
+
+    // Refresh tables list from server
+    const refreshTables = useCallback(async () => {
+        if (!sessionId) return
+        try {
+            const tablesResponse = await sessionAPI.getSessionTables(sessionId)
+            setTables(tablesResponse.tables || [])
+        } catch (error) {
+            console.error('Failed to refresh tables:', error)
+        }
+    }, [sessionId])
+
     const handleExecuteQuery = useCallback(async (sql: string) => {
         if (!sessionId) return
         setLoading(true)
@@ -279,6 +302,11 @@ export function WorkspaceApp() {
             const executionTime = ((performance.now() - startTime) / 1000).toFixed(3)
             setQueryResult({ ...result, execution_time: executionTime })
             addToHistory(sql, true, parseFloat(executionTime))
+            
+            // Auto-refresh tables if query modified schema or data
+            if (result.success && isSchemaModifyingQuery(sql)) {
+                await refreshTables()
+            }
         } catch (error: any) {
             const executionTime = ((performance.now() - startTime) / 1000).toFixed(3)
             setQueryResult({
@@ -290,7 +318,7 @@ export function WorkspaceApp() {
         } finally {
             setLoading(false)
         }
-    }, [sessionId, queryHistory])
+    }, [sessionId, queryHistory, refreshTables])
 
     const handleExplainQuery = useCallback(async (sql: string) => {
         if (!sessionId) return

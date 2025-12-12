@@ -212,8 +212,13 @@ class SessionManager:
                 self.sessions[session_id]["query_count"] += 1
                 self.sessions[session_id]["last_query_time"] = datetime.now()
     
-    def check_rate_limit(self, session_id: str, max_queries_per_minute: int = 10) -> bool:
-        """Check if session has exceeded rate limit"""
+    def check_rate_limit(self, session_id: str, max_queries_per_minute: int = 60) -> bool:
+        """
+        Check if session has exceeded rate limit.
+        
+        Rate limit: 60 queries per minute (1 query per second on average)
+        The counter resets after 1 minute of inactivity.
+        """
         session = self.get_session(session_id)
         if not session:
             return False
@@ -222,13 +227,18 @@ class SessionManager:
         if not last_query:
             return True
         
-        # Simple rate limiting: check queries in last minute
+        # Check if more than 1 minute has passed since last query
         one_minute_ago = datetime.now() - timedelta(minutes=1)
-        if last_query > one_minute_ago:
-            # Count recent queries (simplified - in production use a sliding window)
-            return session["query_count"] < max_queries_per_minute
         
-        return True
+        if last_query < one_minute_ago:
+            # Reset the counter - more than 1 minute has passed
+            with self.lock:
+                if session_id in self.sessions:
+                    self.sessions[session_id]["query_count"] = 0
+            return True
+        
+        # Within the last minute - check if under limit
+        return session["query_count"] < max_queries_per_minute
     
     def _cleanup_session(self, session_id: str):
         """Clean up session resources"""
@@ -335,6 +345,16 @@ class SessionManager:
             conn.execute("SET memory_limit='512MB'")
             conn.execute("SET threads=2")
             
+            # Reset query count if last query was more than 1 minute ago
+            last_query_time = datetime.fromisoformat(metadata["last_query_time"]) if metadata["last_query_time"] else None
+            one_minute_ago = datetime.now() - timedelta(minutes=1)
+            
+            if last_query_time is None or last_query_time < one_minute_ago:
+                # Reset counter - session was idle
+                query_count = 0
+            else:
+                query_count = metadata["query_count"]
+            
             with self.lock:
                 self.sessions[session_id] = {
                     "connection": conn,
@@ -343,8 +363,8 @@ class SessionManager:
                     "session_dir": session_dir,
                     "db_path": db_path,
                     "tables": metadata["tables"],
-                    "query_count": metadata["query_count"],
-                    "last_query_time": datetime.fromisoformat(metadata["last_query_time"]) if metadata["last_query_time"] else None,
+                    "query_count": query_count,
+                    "last_query_time": last_query_time,
                     "user_id": effective_user_id
                 }
                 

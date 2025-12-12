@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
+import re
 from models.schemas import QueryRequest, QueryResponse, ExplainQueryRequest, ExplainQueryResponse
 from services.session_manager import session_manager
 from services.query_executor import QueryExecutor
@@ -13,6 +14,104 @@ import io
 import csv
 
 router = APIRouter()
+
+
+def _extract_table_name(sql: str, query_type: str) -> Optional[str]:
+    """
+    Extract table name from SQL query for syncing purposes.
+    """
+    sql_upper = sql.upper().strip()
+    sql_clean = sql.strip()
+    
+    patterns = {
+        'CREATE': r'CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)',
+        'ALTER': r'ALTER\s+TABLE\s+(\w+)',
+        'DROP': r'DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?(\w+)',
+        'INSERT': r'INSERT\s+INTO\s+(\w+)',
+        'UPDATE': r'UPDATE\s+(\w+)',
+        'DELETE': r'DELETE\s+FROM\s+(\w+)',
+        'TRUNCATE': r'TRUNCATE\s+(?:TABLE\s+)?(\w+)',
+    }
+    
+    pattern = patterns.get(query_type)
+    if pattern:
+        match = re.search(pattern, sql_clean, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    
+    return None
+
+
+def _sync_after_query(session_id: str, sql: str, query_type: str):
+    """
+    Sync table data to Firestore after DDL/DML operations.
+    This ensures tables created/modified via SQL are persisted for cross-device access.
+    """
+    try:
+        session = session_manager.get_session(session_id)
+        if not session:
+            return
+        
+        user_id = session.get("user_id")
+        if not user_id:
+            return  # Don't sync for guest sessions
+        
+        table_name = _extract_table_name(sql, query_type)
+        if not table_name:
+            return
+        
+        # Handle CREATE TABLE - add to session's table list first
+        if query_type == 'CREATE':
+            # Add table to session if not already there
+            if table_name not in session.get("tables", []):
+                session_manager.add_table(session_id, table_name)
+                print(f"[SYNC] Added new table '{table_name}' to session for user {user_id[:8]}...")
+        
+        # Handle DROP TABLE - remove from session and Firestore
+        elif query_type == 'DROP':
+            session_manager.remove_table(session_id, table_name)
+            firestore_service.delete_table(user_id, table_name)
+            print(f"[SYNC] Removed table '{table_name}' for user {user_id[:8]}...")
+            return
+        
+        # Sync the table to Firestore (for CREATE, INSERT, UPDATE, DELETE, ALTER, TRUNCATE)
+        conn = session_manager.get_connection(session_id)
+        if conn:
+            try:
+                # Get table info
+                columns_result = conn.execute(f"DESCRIBE {table_name}").fetchall()
+                columns = [{"name": col[0], "type": col[1]} for col in columns_result]
+                row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+                
+                # Save metadata
+                firestore_service.save_table_metadata(
+                    user_id=user_id,
+                    session_id=session_id,
+                    table_name=table_name,
+                    columns=columns,
+                    row_count=row_count
+                )
+                
+                # Save data if not too large
+                if row_count <= 10000:
+                    data_result = conn.execute(f"SELECT * FROM {table_name}").fetchall()
+                    column_names = [col['name'] for col in columns]
+                    data = [list(row) for row in data_result]
+                    
+                    firestore_service.save_table_data(
+                        user_id=user_id,
+                        table_name=table_name,
+                        data=data,
+                        columns=column_names
+                    )
+                
+                print(f"[SYNC] Synced table '{table_name}' to Firestore for user {user_id[:8]}...")
+                
+            except Exception as e:
+                print(f"[SYNC] Error syncing table '{table_name}': {e}")
+    
+    except Exception as e:
+        print(f"[SYNC] Error in _sync_after_query: {e}")
 
 
 # Request/Response models for user query persistence
@@ -53,6 +152,10 @@ async def execute_query(request: QueryRequest):
     
     # Increment query count
     session_manager.increment_query_count(request.session_id)
+    
+    # If query modified data/schema, sync to Firestore for logged-in users
+    if result.get('success') and result.get('query_type') in ['CREATE', 'ALTER', 'DROP', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']:
+        _sync_after_query(request.session_id, request.sql, result.get('query_type'))
     
     return QueryResponse(**result)
 
