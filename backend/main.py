@@ -82,7 +82,7 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     print("Health check called!", file=sys.stderr)
-    return {"status": "healthy", "port": os.environ.get("PORT", "8000")}
+    return {"status": "healthy", "port": "8000"}
 
 # Global error handler
 @app.exception_handler(Exception)
