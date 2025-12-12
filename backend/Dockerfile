@@ -15,17 +15,14 @@ COPY . .
 # Create temp directory for sessions
 RUN mkdir -p temp_sessions
 
-# Expose port (Railway/Render will override with $PORT)
-EXPOSE 8000
+# Make startup script executable
+RUN chmod +x start.sh
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+# Expose port (Railway will override with $PORT)
+EXPOSE 8000
 
 # Set default port
 ENV PORT=8000
 
-# Run the application
-# Use shell form to expand PORT env variable (Railway/Render will override PORT)
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
-
+# Run the application using the startup script
+CMD ["./start.sh"]
