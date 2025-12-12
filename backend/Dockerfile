@@ -22,7 +22,10 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/health || exit 1
 
+# Set default port
+ENV PORT=8000
+
 # Run the application
-# Use PORT env variable if set (for Railway/Render), otherwise default to 8000
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Use shell form to expand PORT env variable (Railway/Render will override PORT)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
 

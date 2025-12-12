@@ -129,23 +129,33 @@ Or connect your GitHub repo to Vercel for automatic deployments.
 
 2. **Create New Project** → **Deploy from GitHub repo**
 
-3. **Set Root Directory**: `backend`
+3. **Configure Service**:
+   - **Root Directory**: `backend`
+   - Railway will auto-detect Python and use the `Procfile` or `railway.toml`
 
-4. **Add Environment Variables**:
+4. **Add Environment Variables** in Railway Dashboard:
    ```
-   PORT=8000
-   GOOGLE_APPLICATION_CREDENTIALS=/app/firebase-credentials.json
+   ALLOWED_ORIGINS=https://your-app.vercel.app
    ```
 
-5. **Add Firebase Credentials as Secret File**:
-   - In Railway, go to your service → Variables
-   - Add `FIREBASE_CREDENTIALS` with the JSON content
-   - Create a `Dockerfile` or use the start command to write it to file
+5. **Add Firebase Credentials**:
+   
+   **Option 1: Environment Variable (Recommended)**
+   - Add `FIREBASE_CREDENTIALS_JSON` with the entire JSON content as value
+   - Then update `firestore_service.py` to read from env (already supported)
 
-6. **Configure Start Command**:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port $PORT
-   ```
+   **Option 2: Secret File**
+   - Create a new file in Railway → go to Settings → Add Volume
+   - Upload `firebase-credentials.json`
+
+6. **Important Files Already Created**:
+   - `backend/Procfile` - Tells Railway how to start the app
+   - `backend/railway.toml` - Railway-specific configuration
+   - Both use `$PORT` which Railway sets automatically
+
+7. **Verify Deployment**:
+   - Visit `https://your-service.railway.app/api/health`
+   - Should return `{"status": "healthy"}`
 
 ### Option B: Render
 

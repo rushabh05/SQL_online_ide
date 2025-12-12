@@ -96,16 +96,27 @@ class FirestoreService:
                 print("[OK] Firestore: Using existing Firebase app")
                 return
             
-            # Try to load credentials from multiple locations
-            cred_path = None
+            cred = None
             
-            # 1. Check environment variable
-            env_path = os.environ.get('FIREBASE_CREDENTIALS_PATH')
-            if env_path and os.path.exists(env_path):
-                cred_path = env_path
+            # 1. Check for JSON content in environment variable (for Railway/Render)
+            firebase_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+            if firebase_json:
+                try:
+                    cred_dict = json.loads(firebase_json)
+                    cred = credentials.Certificate(cred_dict)
+                    print("[OK] Firestore: Initialized with FIREBASE_CREDENTIALS_JSON env var")
+                except json.JSONDecodeError as e:
+                    print(f"[ERROR] Invalid JSON in FIREBASE_CREDENTIALS_JSON: {e}")
             
-            # 2. Check backend directory (where this file's parent is)
-            if not cred_path:
+            # 2. Check environment variable for file path
+            if not cred:
+                env_path = os.environ.get('FIREBASE_CREDENTIALS_PATH')
+                if env_path and os.path.exists(env_path):
+                    cred = credentials.Certificate(env_path)
+                    print(f"[OK] Firestore: Initialized with FIREBASE_CREDENTIALS_PATH: {env_path}")
+            
+            # 3. Check backend directory (where this file's parent is)
+            if not cred:
                 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 possible_paths = [
                     os.path.join(backend_dir, 'firebase-credentials.json'),
@@ -114,19 +125,19 @@ class FirestoreService:
                 ]
                 for path in possible_paths:
                     if os.path.exists(path):
-                        cred_path = path
+                        cred = credentials.Certificate(path)
+                        print(f"[OK] Firestore: Initialized with credentials from {path}")
                         break
             
-            # 3. Check current working directory
-            if not cred_path:
+            # 4. Check current working directory
+            if not cred:
                 cwd_path = os.path.join(os.getcwd(), 'firebase-credentials.json')
                 if os.path.exists(cwd_path):
-                    cred_path = cwd_path
+                    cred = credentials.Certificate(cwd_path)
+                    print(f"[OK] Firestore: Initialized with credentials from {cwd_path}")
             
-            if cred_path:
-                cred = credentials.Certificate(cred_path)
+            if cred:
                 firebase_admin.initialize_app(cred)
-                print(f"[OK] Firestore: Initialized with credentials from {cred_path}")
                 self.db = firestore.client()
             else:
                 # Try default credentials (for Cloud Run, GCE, etc.)
@@ -137,7 +148,7 @@ class FirestoreService:
                 except Exception as default_err:
                     # No credentials found
                     print(f"[WARN] Firestore: No credentials found, running in local-only mode")
-                    print(f"  Looked in: FIREBASE_CREDENTIALS_PATH env, backend/firebase-credentials.json")
+                    print(f"  Looked in: FIREBASE_CREDENTIALS_JSON env, FIREBASE_CREDENTIALS_PATH env, backend/firebase-credentials.json")
                     self.db = None
                     return
             
