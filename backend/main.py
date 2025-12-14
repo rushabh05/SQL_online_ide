@@ -42,8 +42,11 @@ app = FastAPI(
 allowed_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
 production_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
 
-# Default development origins
-dev_origins = [
+# Default origins (development + your deployed Vercel app)
+default_origins = [
+    # Production Vercel deployment
+    "https://sql-online-ide.vercel.app",
+    # Development origins
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
@@ -53,8 +56,10 @@ dev_origins = [
     "http://127.0.0.1:5173",
 ]
 
-# Combine production and dev origins
-all_origins = production_origins + dev_origins
+# Combine production env origins with defaults
+all_origins = list(set(production_origins + default_origins))
+
+print(f"CORS allowed origins: {all_origins}", file=sys.stderr)
 
 app.add_middleware(
     CORSMiddleware,
